@@ -11,14 +11,34 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
+      - name: Get latest tag
+        id: get_tag
+        run: |
+          # 获取最新的标签
+          TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
+          # 如果没有标签，则设置初始版本号
+          if [ -z "$TAG" ]; then
+            TAG="v0.0.0"
+          fi
+          echo "Latest tag: $TAG"
+          # 提取主版本号、次版本号和补丁号
+          VERSION_MAJOR=$(echo $TAG | cut -d. -f1 | cut -dv -f2)
+          VERSION_MINOR=$(echo $TAG | cut -d. -f2)
+          VERSION_PATCH=$(echo $TAG | cut -d. -f3)
+          # 增加补丁号
+          VERSION_PATCH=$((VERSION_PATCH+1))
+          # 生成新的版本号
+          NEW_TAG="v${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_PATCH}"
+          echo "New tag: $NEW_TAG"
+          echo "::set-output name=new_tag::$NEW_TAG"    
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GAYHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: ${{ github.ref }}
+          tag_name: ${{ steps.get_tag.outputs.new_tag }}
+          release_name: ${{ steps.get_tag.outputs.new_tag }}
           draft: true
           prerelease: true
   linuxamd64build:
